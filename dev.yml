@@ -1,0 +1,14 @@
+# dev settings
+
+version: '2'
+
+services:
+  web:
+    volumes:
+      - ./trackhs:/var/www/app
+  redis:
+    volumes:
+      - devdb:/data
+
+volumes:
+  devdb: {}

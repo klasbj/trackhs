@@ -1,0 +1,15 @@
+{
+	"authors": [
+		"Klas Björkqvist"
+	],
+	"name": "trackhs",
+	"license": "BSD 2-clause",
+	"copyright": "Copyright © 2016, Klas Björkqvist",
+	"description": "A Hearthstone tracker backend",
+	"dependencies": {
+		"vibe-d": "~>0.7.26"
+	},
+	"versions": [
+		"VibeDefaultMain"
+	]
+}
