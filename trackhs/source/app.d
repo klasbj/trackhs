@@ -27,7 +27,9 @@ import vibe.d;
 shared static this()
 {
   auto router = new URLRouter;
-  router.registerWebInterface(new Frontend);
+  auto api = new Api;
+  router.registerRestInterface(api, "/api");
+  router.registerWebInterface(new Frontend(api));
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
@@ -38,16 +40,87 @@ shared static this()
 	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
 }
 
+struct UserInfo {
+  bool authenticated;
+  uint userId;
+}
+
+UserInfo authRest(HTTPServerRequest req, HTTPServerResponse res) {
+  if ("username" in req.query && "token" in req.query) {
+    if (req.query["username"] == "user" && req.query["token"] == "aaaa") {
+      return UserInfo(true, 1);
+    }
+    // don't fall back to session if auth failed
+    return UserInfo.init;
+  }
+
+  if (req.session) {
+    return req.session.get!UserInfo("userinfo");
+  }
+
+  return UserInfo.init;
+}
+
+interface ITrackhs {
+
+  enum Class {
+    Priest, Mage, Warrior, Druid, Paladin,
+    Warlock, Shaman, Rogue, Hunter
+  }
+
+  enum GameResult {
+    Win, Loss
+  }
+
+  struct BasicGameInfo {
+    ulong gameId;
+    Class ourClass, opponentsClass;
+    GameResult result;
+    uint deckId;
+    bool first;
+  }
+
+  // GET /games
+  @before!authRest("user")
+  BasicGameInfo[] getGames(UserInfo user = UserInfo.init);
+}
+
+class Api : ITrackhs {
+  private {
+    auto dummyGames = [
+      BasicGameInfo(1, Class.Priest, Class.Warrior, GameResult.Win, 0, false),
+      BasicGameInfo(2, Class.Priest, Class.Priest, GameResult.Win, 0, true),
+      BasicGameInfo(3, Class.Shaman, Class.Paladin, GameResult.Loss, 0, true),
+      ];
+  }
+
+  private BasicGameInfo[] findGames(uint userId) {
+    return dummyGames;
+  }
+
+  BasicGameInfo[] getGames(UserInfo user = UserInfo.init) {
+    enforceHTTP(user.authenticated,
+        HTTPStatus.forbidden, "Authentication failure");
+
+    return findGames(user.userId);
+  }
+}
+
 class Frontend {
   private {
-    SessionVar!(bool, "authenticated") authenticated;
-    SessionVar!(uint, "userid") userId;
+    SessionVar!(UserInfo, "userinfo") user;
+
+    Api provider;
+  }
+
+  this(Api api) {
+    provider = api;
   }
 
   // GET /
   void get() {
-    auto authenticated = this.authenticated;
-    auto userId = this.userId;
+    auto authenticated = user.authenticated;
+    auto userId = user.userId;
     render!("index.dt", authenticated, userId);
   }
 
@@ -55,15 +128,13 @@ class Frontend {
   void postLogin(string username, string password) {
     enforceHTTP(username == "user",
         HTTPStatus.forbidden, "Invalid username or password");
-    authenticated = true;
-    userId = 1;
+    user = UserInfo(true, 1);
     redirect("/");
   }
 
   // POST /logout
   void postLogout() {
-    authenticated = false;
-    userId = 0;
+    user = UserInfo(false, 0);
     terminateSession();
     redirect("/");
   }
