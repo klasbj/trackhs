@@ -26,15 +26,45 @@ import vibe.d;
 
 shared static this()
 {
+  auto router = new URLRouter;
+  router.registerWebInterface(new Frontend);
+
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
 	settings.bindAddresses = ["::1", "0.0.0.0"];
-	listenHTTP(settings, &hello);
+  settings.sessionStore = new MemorySessionStore;
+	listenHTTP(settings, router);
 
 	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
 }
 
-void hello(HTTPServerRequest req, HTTPServerResponse res)
-{
-	res.writeBody("Hello, World!");
+class Frontend {
+  private {
+    SessionVar!(bool, "authenticated") authenticated;
+    SessionVar!(uint, "userid") userId;
+  }
+
+  // GET /
+  void get() {
+    auto authenticated = this.authenticated;
+    auto userId = this.userId;
+    render!("index.dt", authenticated, userId);
+  }
+
+  // POST /login
+  void postLogin(string username, string password) {
+    enforceHTTP(username == "user",
+        HTTPStatus.forbidden, "Invalid username or password");
+    authenticated = true;
+    userId = 1;
+    redirect("/");
+  }
+
+  // POST /logout
+  void postLogout() {
+    authenticated = false;
+    userId = 0;
+    terminateSession();
+    redirect("/");
+  }
 }

@@ -1,0 +1,21 @@
+doctype html
+html
+  head
+    title trackhs
+    meta(charset="utf-8")
+  body
+    h1 trackhs
+    - if (authenticated)
+      p User ID: #{userId}
+      form(action="logout", method="POST")
+        button(type="submit") Log out
+    - else
+      h2 Log in
+      form(action="login", method="POST")
+        p Username:
+          input(type="text", name="username")
+        p Password:
+          input(type="password", name="password")
+        button(type="submit") Log in
+
+//- vim: set ft=jade:
