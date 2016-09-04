@@ -83,6 +83,14 @@ interface ITrackhs {
   // GET /games
   @before!authRest("user")
   BasicGameInfo[] getGames(UserInfo user = UserInfo.init);
+
+  @before!authRest("user")
+  void postGame(Class ownClass, Class opponentsClass, GameResult result,
+      bool first, uint deckId = 0, UserInfo user = UserInfo.init);
+
+  @before!authRest("user") @path("game/:id/deck")
+  void setGameDeck(uint _id, uint deckId, UserInfo user = UserInfo.init);
+
 }
 
 class Api : ITrackhs {
@@ -98,11 +106,39 @@ class Api : ITrackhs {
     return dummyGames;
   }
 
+  private void recordGame(uint userId, BasicGameInfo gi) {
+    gi.gameId = dummyGames.length + 1;
+    dummyGames ~= gi;
+  }
+
+  private void setGameDeck(uint userId, ulong gameId, uint deckId) {
+    if (gameId > 0 && gameId < dummyGames.length) {
+      dummyGames[gameId-1].deckId = deckId;
+    }
+  }
+
+override:
   BasicGameInfo[] getGames(UserInfo user = UserInfo.init) {
     enforceHTTP(user.authenticated,
         HTTPStatus.forbidden, "Authentication failure");
 
     return findGames(user.userId);
+  }
+
+  void postGame(Class ownClass, Class opponentsClass, GameResult result,
+      bool first, uint deckId = 0, UserInfo user = UserInfo.init) {
+    enforceHTTP(user.authenticated,
+        HTTPStatus.forbidden, "Authentication failure");
+
+    recordGame(user.userId, BasicGameInfo(0, ownClass, opponentsClass, result,
+                                          deckId, first));
+  }
+
+  void setGameDeck(uint id, uint deckId, UserInfo user = UserInfo.init) {
+    enforceHTTP(user.authenticated,
+        HTTPStatus.forbidden, "Authentication failure");
+
+    setGameDeck(user.userId, id, deckId);
   }
 }
 
