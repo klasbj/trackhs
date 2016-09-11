@@ -167,7 +167,12 @@ class Frontend {
   void get() {
     auto authenticated = user.authenticated;
     auto userId = user.userId;
-    render!("index.dt", authenticated, userId);
+    ITrackhs.BasicGameInfo[] games;
+    if (authenticated) {
+      games = provider.getGames(user);
+    }
+
+    render!("index.dt", authenticated, userId, games);
   }
 
   // POST /login

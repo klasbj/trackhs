@@ -9,6 +9,17 @@ html
       p User ID: #{userId}
       form(action="logout", method="POST")
         button(type="submit") Log out
+      h2 Games
+      p
+        table
+          - foreach(g; games)
+            tr
+              td= g.ourClass
+              td= g.opponentsClass
+              td= g.result
+              td= g.deckId
+              td= g.first ? "first" : "second"
+
     - else
       h2 Log in
       form(action="login", method="POST")
