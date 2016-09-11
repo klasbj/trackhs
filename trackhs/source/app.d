@@ -23,6 +23,7 @@
  */
 
 import vibe.d;
+import jsclient;
 
 shared static this()
 {
@@ -39,7 +40,7 @@ shared static this()
   auto api = new Api;
   router.registerRestInterface(api, "/api");
   router.registerWebInterface(new Frontend(api));
-  router.get("/api.js", serveRestJSClient!ITrackhs(restsettings));
+  router.get("/api.js", serveJSClient!ITrackhs(restsettings));
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
