@@ -6,6 +6,8 @@ services:
   web:
     volumes:
       - ./trackhs:/var/www/app
+    environment:
+      - DOCKER_HOST
   redis:
     volumes:
       - devdb:/data

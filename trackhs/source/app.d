@@ -26,10 +26,20 @@ import vibe.d;
 
 shared static this()
 {
+  import std.process: environment;
+  import std.regex;
+  auto dockerHost = environment
+                      .get("DOCKER_HOST", "tcp://127.0.0.1:1234")
+                      .replaceFirst(regex(r".*://([^:/]*)([:/].*|$)"), "$1");
+
+  auto restsettings = new RestInterfaceSettings;
+  restsettings.baseURL = URL("http://" ~ dockerHost ~ ":8080/api/");
+
   auto router = new URLRouter;
   auto api = new Api;
   router.registerRestInterface(api, "/api");
   router.registerWebInterface(new Frontend(api));
+  router.get("/api.js", serveRestJSClient!ITrackhs(restsettings));
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
@@ -37,7 +47,7 @@ shared static this()
   settings.sessionStore = new MemorySessionStore;
 	listenHTTP(settings, router);
 
-	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
+	logInfo("Please open http://" ~ dockerHost ~ ":8080/ in your browser.");
 }
 
 struct UserInfo {
