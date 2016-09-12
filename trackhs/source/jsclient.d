@@ -19,6 +19,25 @@ HTTPServerRequestDelegate serveJSClient(I)(RestInterfaceSettings settings) {
   return &serve;
 }
 
+template AllEnums(T) {
+  import std.typetuple: TypeTuple;
+  import std.traits: Identity;
+  enum memberNames = [__traits(allMembers, T)];
+  template Impl(size_t i) {
+    static if (i < memberNames.length) {
+      alias Identity!(__traits(getMember, T, memberNames[i])) mem;
+      static if (is(mem == enum)) {
+        alias Impl = TypeTuple!(mem, Impl!(i+1));
+      } else {
+        alias Impl = Impl!(i+1);
+      }
+    } else {
+      alias Impl = TypeTuple!();
+    }
+  }
+  alias AllEnums = Impl!0;
+}
+
 void generateJSClient(TImpl, R)(ref R output, string name, RestInterfaceSettings settings) {
   import std.format: formattedWrite;
   import std.traits;
@@ -30,6 +49,21 @@ void generateJSClient(TImpl, R)(ref R output, string name, RestInterfaceSettings
 
   output.formattedWrite("var %s = new function() {\n", name.length > 0 ? name : intf.I.stringof);
 
+  // Output enum types defined in TImpl
+  foreach (e; AllEnums!TImpl) {
+    output.formattedWrite("  this.%s = Object.freeze({\n", e.stringof);
+    foreach (m; EnumMembers!e) {
+      output.formattedWrite("    %s : %s,\n", m, m.to!(OriginalType!e));
+    }
+    output.put("    string : {\n");
+    foreach (m; EnumMembers!e) {
+      output.formattedWrite("      %s : %s,\n", m.to!(OriginalType!e), Json(m.to!string));
+    }
+    output.put("    },\n");
+    output.put("  });\n");
+  }
+
+  // output route functions
   foreach (i, F; intf.RouteFunctions) {
     auto route = intf.routes[i];
 
