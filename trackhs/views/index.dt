@@ -2,7 +2,7 @@
 - void genSelect(ET)()
   - import std.traits;
   - foreach (immutable t; EnumMembers!ET)
-    option(value="#{to!int(t)}")= t
+    option(value="#{t.to!(OriginalType!ET)}")= t
 
 doctype html
 html
