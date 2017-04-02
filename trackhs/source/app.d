@@ -24,31 +24,35 @@
 
 import vibe.d;
 import jsclient;
+import common;
 
-shared static this()
-{
-  import std.process: environment;
-  import std.regex;
-  auto dockerHost = environment
-                      .get("DOCKER_HOST", "tcp://127.0.0.1:1234")
-                      .replaceFirst(regex(r".*://([^:/]*)([:/].*|$)"), "$1");
+version (unittest) {
+} else {
+  shared static this()
+  {
+    import std.process: environment;
+    import std.regex;
+    auto dockerHost = environment
+      .get("DOCKER_HOST", "tcp://127.0.0.1:1234")
+      .replaceFirst(regex(r".*://([^:/]*)([:/].*|$)"), "$1");
 
-  auto restsettings = new RestInterfaceSettings;
-  restsettings.baseURL = URL("http://" ~ dockerHost ~ ":8080/api/");
+    auto restsettings = new RestInterfaceSettings;
+    restsettings.baseURL = URL("http://" ~ dockerHost ~ ":8080/api/");
 
-  auto router = new URLRouter;
-  auto api = new Api;
-  router.registerRestInterface(api, "/api");
-  router.registerWebInterface(new Frontend(api));
-  router.get("/api.js", serveJSClient!ITrackhs(restsettings));
+    auto router = new URLRouter;
+    auto api = new Api;
+    router.registerRestInterface(api, "/api");
+    router.registerWebInterface(new Frontend(api));
+    router.get("/api.js", serveJSClient!ITrackhs(restsettings));
 
-	auto settings = new HTTPServerSettings;
-	settings.port = 8080;
-	settings.bindAddresses = ["::1", "0.0.0.0"];
-  settings.sessionStore = new MemorySessionStore;
-	listenHTTP(settings, router);
+    auto settings = new HTTPServerSettings;
+    settings.port = 8080;
+    settings.bindAddresses = ["::1", "0.0.0.0"];
+    settings.sessionStore = new MemorySessionStore;
+    listenHTTP(settings, router);
 
-	logInfo("Please open http://" ~ dockerHost ~ ":8080/ in your browser.");
+    logInfo("Please open http://" ~ dockerHost ~ ":8080/ in your browser.");
+  }
 }
 
 struct UserInfo {
@@ -74,14 +78,9 @@ UserInfo authRest(HTTPServerRequest req, HTTPServerResponse res) {
 
 interface ITrackhs {
 
-  enum Class {
-    Priest, Mage, Warrior, Druid, Paladin,
-    Warlock, Shaman, Rogue, Hunter
-  }
+  alias Class = common.XClass;
 
-  enum GameResult {
-    Win, Loss
-  }
+  alias GameResult = common.GameResult;
 
   struct BasicGameInfo {
     ulong gameId;
@@ -157,10 +156,10 @@ class Frontend {
   private {
     SessionVar!(UserInfo, "userinfo") user;
 
-    Api provider;
+    ITrackhs provider;
   }
 
-  this(Api api) {
+  this(ITrackhs api) {
     provider = api;
   }
 

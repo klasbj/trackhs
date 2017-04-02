@@ -19,6 +19,11 @@ HTTPServerRequestDelegate serveJSClient(I)(RestInterfaceSettings settings) {
   return &serve;
 }
 
+template EnumPair(T, string N) if (is(T == enum)) {
+  alias type = T;
+  alias name = N;
+}
+
 template AllEnums(T) {
   import std.typetuple: TypeTuple;
   import std.traits: Identity;
@@ -27,7 +32,7 @@ template AllEnums(T) {
     static if (i < memberNames.length) {
       alias Identity!(__traits(getMember, T, memberNames[i])) mem;
       static if (is(mem == enum)) {
-        alias Impl = TypeTuple!(mem, Impl!(i+1));
+        alias Impl = TypeTuple!(EnumPair!(mem,memberNames[i]), Impl!(i+1));
       } else {
         alias Impl = Impl!(i+1);
       }
@@ -51,13 +56,13 @@ void generateJSClient(TImpl, R)(ref R output, string name, RestInterfaceSettings
 
   // Output enum types defined in TImpl
   foreach (e; AllEnums!TImpl) {
-    output.formattedWrite("  this.%s = Object.freeze({\n", e.stringof);
-    foreach (m; EnumMembers!e) {
-      output.formattedWrite("    %s : %s,\n", m, m.to!(OriginalType!e));
+    output.formattedWrite("  this.%s = Object.freeze({\n", e.name); //__traits(identifier, e));
+    foreach (m; EnumMembers!(e.type)) {
+      output.formattedWrite("    %s : %s,\n", m, m.to!(OriginalType!(e.type)));
     }
     output.put("    string : {\n");
-    foreach (m; EnumMembers!e) {
-      output.formattedWrite("      %s : %s,\n", m.to!(OriginalType!e), Json(m.to!string));
+    foreach (m; EnumMembers!(e.type)) {
+      output.formattedWrite("      %s : %s,\n", m.to!(OriginalType!(e.type)), Json(m.to!string));
     }
     output.put("    },\n");
     output.put("  });\n");
@@ -129,9 +134,9 @@ void generateJSClient(TImpl, R)(ref R output, string name, RestInterfaceSettings
     output.put("  };\n");
   }
 
-	foreach (i, SI; intf.SubInterfaceTypes) {
-		output.generateJSClient!SI(intf.subInterfaces[i].name, intf.subInterfaces[i].settings);
-	}
+  foreach (i, SI; intf.SubInterfaceTypes) {
+    output.generateJSClient!SI(intf.subInterfaces[i].name, intf.subInterfaces[i].settings);
+  }
 
   output.put("}();\n");
 }
