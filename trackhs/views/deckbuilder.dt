@@ -1,0 +1,32 @@
+- import app;
+- void genSelect(ET)()
+  - import std.traits;
+  - foreach (immutable t; EnumMembers!ET)
+    option(value="#{t.to!(OriginalType!ET)}")= t
+
+doctype html
+html
+  head
+    title trackhs
+    meta(charset="utf-8")
+  body
+    h1 trackhs
+    #deckbuilder
+      #selectpane
+        p select cards here
+      #deckpane
+        p show deck here
+
+  script(src="/api.js", type="text/javascript")
+  script(type="text/javascript").
+    var recordgame_submit = function(e) {
+      req = {
+        ourClass : Number(document.querySelector('select#ourclass').value),
+        opponentsClass : Number(document.querySelector('select#opponentsclass').value),
+        result : Number(document.querySelector('select#result').value),
+        first : document.querySelector('input#first').checked
+        };
+
+      ITrackhs.postGame(req.ourClass, req.opponentsClass, req.result, req.first, 0);
+    }
+//- vim: set ft=jade:

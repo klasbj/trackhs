@@ -45,6 +45,10 @@ version (unittest) {
     router.registerWebInterface(new Frontend(api));
     router.get("/api.js", serveJSClient!ITrackhs(restsettings));
 
+    auto fssettings = new HTTPFileServerSettings;
+    fssettings.serverPathPrefix = "/static";
+    router.get("/static/*", serveStaticFiles("public/", fssettings));
+
     auto settings = new HTTPServerSettings;
     settings.port = 8080;
     settings.bindAddresses = ["::1", "0.0.0.0"];
@@ -173,6 +177,14 @@ class Frontend {
     }
 
     render!("index.dt", authenticated, userId, games);
+  }
+
+  // GET /deck/build
+  @path("/deck/build")
+  void getDeckBuild() {
+    enforceHTTP(user.authenticated,
+        HTTPStatus.forbidden, "Authentication failure");
+    render!("deckbuilder.dt");
   }
 
   // POST /login
