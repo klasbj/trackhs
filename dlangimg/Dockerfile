@@ -13,8 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libssl-dev \
         unzip \
         tar \
-        dub \
+        #dub \
         dmd-bin \
-        libphobos2-dev
+        libphobos2-dev \
+        wget
 
-
+# Manually install dub 1.2.1, since 1.2.2 is broken in d-apt
+RUN wget -q -O - http://code.dlang.org/files/dub-1.2.1-linux-x86_64.tar.gz | tar -xzO > /usr/bin/dub && \
+    chmod 755 /usr/bin/dub
