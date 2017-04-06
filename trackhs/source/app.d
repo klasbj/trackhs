@@ -182,8 +182,8 @@ class Frontend {
   // GET /deck/build
   @path("/deck/build")
   void getDeckBuild() {
-    enforceHTTP(user.authenticated,
-        HTTPStatus.forbidden, "Authentication failure");
+    //enforceHTTP(user.authenticated,
+    //    HTTPStatus.forbidden, "Authentication failure");
     render!("deckbuilder.dt");
   }
 
