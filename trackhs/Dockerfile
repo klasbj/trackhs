@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         babel-preset-react \
         babel-polyfill
 
+ENV NODE_PATH /usr/local/lib/node_modules
+
 RUN mkdir -p /etc/vibe
 RUN echo "{ \
   \"user\":\"www-data\", \
@@ -25,6 +27,6 @@ EXPOSE 8080
 
 WORKDIR /var/www/app
 
-RUN dub build
+RUN make all
 
-CMD ["dub"]
+CMD ["./trackhs"]
