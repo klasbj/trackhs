@@ -1,0 +1,40 @@
+.decklist > ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+li.deckcard {
+  background-color: antiquewhite;
+  margin: 0;
+  user-select: none;
+}
+.deckcard > div.primary > div {
+  display: inline-block;
+}
+
+.deckcard .cost {
+  background-color: midnightblue;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  width: 2em;
+  margin-right: 1em;
+}
+
+.deckcard .cnt {
+  background-color: lightcoral;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  width: 1em;
+  float: right;
+  margin-left: 1em;
+}
+
+
+.deckcard > div.extra {
+  display: none;
+}
+.deckcard:hover > div.extra {
+  display: block;
+}
