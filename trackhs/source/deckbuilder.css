@@ -21,6 +21,14 @@ li.deckcard {
   margin-right: 1em;
 }
 
+.cost {
+  background-color: midnightblue;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  width: 2em;
+}
+
 .deckcard .cnt {
   background-color: lightcoral;
   color: white;
@@ -37,4 +45,50 @@ li.deckcard {
 }
 .deckcard:hover > div.extra {
   display: block;
+}
+
+.searchresults > ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.searchresults .card {
+  width: 15em;
+  /*height: 7em;*/
+  display: inline-block;
+  background-color: snow;
+  vertical-align: top;
+  margin: 0.5em;
+
+  filter: drop-shadow(.2em .2em .1em black);
+}
+
+.searchresults .card > div {
+  display: inline-block;
+}
+
+.searchresults .card > div.text {
+  text-align: center;
+  display: block;
+  margin-left: 1em;
+  margin-right: 1em;
+  margin-top: 0.2em;
+  margin-bottom: 0.2em;
+  height: 4.2em;
+  line-height: 4.2em;
+}
+
+.searchresults .card > div.text > span {
+  display: inline-block;
+  line-height: 1.2em;
+  vertical-align: middle;
+}
+
+.searchresults .card > div.left {
+  float: left;
+  margin-right: 1em;
+}
+.searchresults .card > div.right {
+  float: right;
+  margin-left: 1em;
 }
