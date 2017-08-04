@@ -2,20 +2,33 @@
 vpath %.jsx source
 vpath %.css source
 
+JSS := $(addprefix public/, react.js react-dom.js immutable.min.js system.js)
 JS := public/deckbuilder.js
 CSS := public/deckbuilder.css
 
 .PHONY: all
-all: trackhs $(JS) $(CSS)
+all: trackhs static
 
 .PHONY: static
-static: $(JS) $(CSS)
+static: $(JS) $(CSS) $(JSS)
 
 public:
 	@mkdir public
 
-$(JS): public/%.js: %.jsx | public
+$(JS): public/%.js: %.jsx .babelrc | public
 	babel -o $@ $<
+
+public/react.js: $(NODE_PATH)/react/dist/react.js | public
+	cp $< $@
+
+public/react-dom.js: $(NODE_PATH)/react-dom/dist/react-dom.js | public
+	cp $< $@
+
+public/immutable.min.js: $(NODE_PATH)/immutable/dist/immutable.min.js | public
+	cp $< $@
+
+public/system.js: $(NODE_PATH)/systemjs/dist/system.js | public
+	cp $< $@
 
 $(CSS): public/%.css: %.css | public
 	cp $< $@

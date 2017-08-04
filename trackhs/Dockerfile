@@ -10,7 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         babel-cli \
         babel-preset-env \
         babel-preset-react \
-        babel-polyfill
+        babel-polyfill \
+        babel-plugin-transform-es2015-modules-systemjs \
+        systemjs \
+        immutable \
+        react \
+        react-dom
 
 ENV NODE_PATH /usr/local/lib/node_modules
 
