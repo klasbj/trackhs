@@ -1,0 +1,8 @@
+{
+  "libs": [
+    "browser",
+    "react"
+  ],
+  "plugins": {
+  }
+}
