@@ -199,10 +199,11 @@ class CardSelector extends React.Component {
 class DeckBuilder extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { cards : new Map(),
-                   deck : new Map(),
-                   sideboard : new Map() };
-    card_db.forEach((c) => this.state.cards.set(c.id, c));
+    let cards = new Map();
+    card_db.forEach((c) => cards.set(c.id, c));
+    this.state = { cards : new Immutable.Map(cards),
+                   deck : new Immutable.Map(),
+                   sideboard : new Immutable.Map() };
 
     this.addToDeck = this.addToDeck.bind(this);
     this.removeFromDeck = this.removeFromDeck.bind(this);
@@ -210,11 +211,13 @@ class DeckBuilder extends React.Component {
 
   addToDeck(cardId) {
     this.setState(function (prev,props) {
-      let newDeck = new Map(prev.deck);
-      if (!newDeck.has(cardId)) {
-        newDeck.set(cardId, 1);
-      } else if (newDeck.get(cardId) < (prev.cards.get(cardId).rarity.toLowerCase() == 'legendary' ? 1 : 2)) {
-        newDeck.set(cardId, newDeck.get(cardId) + 1);
+      let newDeck = null; //ew Map(prev.deck);
+      if (!prev.deck.has(cardId)) {
+        newDeck = prev.deck.set(cardId, 1);
+      } else if (prev.deck.get(cardId) < (prev.cards.get(cardId).rarity.toLowerCase() == 'legendary' ? 1 : 2)) {
+        newDeck = prev.deck.set(cardId, prev.deck.get(cardId) + 1);
+      } else {
+        return {};
       }
       return {deck : newDeck};
     });
@@ -222,25 +225,24 @@ class DeckBuilder extends React.Component {
 
   removeFromDeck(cardId) {
     this.setState(function (prev,props) {
-      let newDeck = new Map(prev.deck);
-      if (newDeck.has(cardId)) {
-        let newCount = newDeck.get(cardId) - 1;
+      let newDeck = null;//new Map(prev.deck);
+      if (prev.deck.has(cardId)) {
+        let newCount = prev.deck.get(cardId) - 1;
         if (newCount > 0) {
-          newDeck.set(cardId, newCount);
+          newDeck = prev.deck.set(cardId, newCount);
         } else {
-          newDeck.delete(cardId);
+          newDeck = prev.deck.delete(cardId);
         }
+        return {deck : newDeck};
       }
-      return {deck : newDeck};
+      return {};
     });
   }
 
   getCardList(cardIds) {
     let ans = [];
     cardIds.forEach((c,k) => c > 0 ? ans.push(Object.assign({}, this.state.cards.get(k), {"count": c})) : null);
-    console.log(cardIds, ans);
     ans.sort((a,b) => a.cost == b.cost ? a.name.localeCompare(b.name) : a.cost - b.cost);
-    console.log(cardIds, ans);
     return ans;
   }
   render() {
