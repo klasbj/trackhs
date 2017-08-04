@@ -1,5 +1,5 @@
-
-const deck = [
+/*
+const card_db = [
   { "id" : "A_1",
     "cost" : 3,
     "name" : "Egregious Owl",
@@ -26,12 +26,13 @@ const deck = [
   {"artist":"Steve Hui","cardClass":"ROGUE","collectible":true,"cost":1,"dbfId":990,"flavor":"Rogues conceal everything but their emotions.  You can't get 'em to shut up about feelings.","id":"EX1_128","name":"Conceal","playerClass":"ROGUE","rarity":"COMMON","referencedTags":["STEALTH"],"set":"HOF","text":"Give your minions <b>Stealth</b> until your next turn.","type":"SPELL"},
   {"artist":"Alex Horley Orlandelli","attack":3,"cardClass":"WARLOCK","collectible":true,"cost":9,"dbfId":777,"elite":true,"flavor":"\"TRIFLING GNOME! YOUR ARROGANCE WILL BE YOUR UNDOING!!!!\"","health":15,"id":"EX1_323","mechanics":["BATTLECRY"],"name":"Lord Jaraxxus","playerClass":"WARLOCK","race":"DEMON","rarity":"LEGENDARY","set":"EXPERT1","text":"<b>Battlecry:</b> Destroy your hero and replace it with Lord Jaraxxus.","type":"MINION"}
 ];
+*/
 
 function DeckCard(props) {
   
   const click = function(e) {
     if (props.onClick) {
-      props.onClick({button: e.button, card: e.card});
+      props.onClick({button: e.button, card: props.card.id});
     }
   }
 
@@ -63,13 +64,25 @@ function DeckList(props) {
 }
 
 class DeckPane extends React.Component {
-  clickhandler(e) {
-    console.log(e);
+  constructor(props) {
+    super(props);
+
+    this.handleCardClick = this.handleCardClick.bind(this);
+  }
+
+  handleCardClick(ev) {
+    switch (ev.button) {
+      case 0:
+        this.props.onRemove(ev.card);
+        break;
+      default:
+        break;
+    }
   }
   render() {
     return (
       <div className="deckpane">
-        <DeckList deck={deck.filter((x) => x.count > 0)} onClick={this.clickhandler} />
+        <DeckList deck={this.props.deck} onClick={this.handleCardClick} />
       </div>
     );
   }
@@ -99,7 +112,7 @@ function SearchCard(props) {
   
   const click = function(e) {
     if (props.onClick) {
-      props.onClick({button: e.button, card: e.card});
+      props.onClick({button: e.button, card: props.card.id});
     }
   }
 
@@ -148,29 +161,91 @@ function SearchResults(props) {
 class CardSelector extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { searchresult : deck };
+    this.state = { searchresult : card_db.filter((x) => x.type != "HERO") };
+
+    this.search = this.search.bind(this);
+    this.handleCardClick = this.handleCardClick.bind(this);
   }
 
   search(terms) {
     console.log("search eventually");
   }
 
+  handleCardClick(ev) {
+    switch (ev.button) {
+      case 0:
+        this.props.onAddToDeck(ev.card);
+        break;
+      default:
+        break;
+    }
+  }
+
   render() {
     return (
       <div className="cardselector">
         <SearchBar onChange={this.search} />
-        <SearchResults cards={this.state.searchresult} />
+        <SearchResults cards={this.state.searchresult} onClick={this.handleCardClick} />
       </div>
       );
   }
 }
 
 class DeckBuilder extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { cards : new Map(),
+                   deck : new Map(),
+                   sideboard : new Map() };
+    card_db.forEach((c) => this.state.cards.set(c.id, c));
+
+    this.addToDeck = this.addToDeck.bind(this);
+    this.removeFromDeck = this.removeFromDeck.bind(this);
+  }
+
+  addToDeck(cardId) {
+    this.setState(function (prev,props) {
+      let newDeck = new Map(prev.deck);
+      if (!newDeck.has(cardId)) {
+        newDeck.set(cardId, 1);
+      } else if (newDeck.get(cardId) < (prev.cards.get(cardId).rarity.toLowerCase() == 'legendary' ? 1 : 2)) {
+        newDeck.set(cardId, newDeck.get(cardId) + 1);
+      }
+      return {deck : newDeck};
+    });
+  }
+
+  removeFromDeck(cardId) {
+    this.setState(function (prev,props) {
+      let newDeck = new Map(prev.deck);
+      if (newDeck.has(cardId)) {
+        let newCount = newDeck.get(cardId) - 1;
+        if (newCount > 0) {
+          newDeck.set(cardId, newCount);
+        } else {
+          newDeck.delete(cardId);
+        }
+      }
+      return {deck : newDeck};
+    });
+  }
+
+  getCardList(cardIds) {
+    let ans = [];
+    cardIds.forEach((c,k) => c > 0 ? ans.push(Object.assign({}, this.state.cards.get(k), {"count": c})) : null);
+    console.log(cardIds, ans);
+    ans.sort((a,b) => a.cost == b.cost ? a.name.localeCompare(b.name) : a.cost - b.cost);
+    console.log(cardIds, ans);
+    return ans;
+  }
   render() {
     return (
       <div className="deckbuilder">
-        <CardSelector />
-        <DeckPane />
+        <CardSelector onAddToDeck={this.addToDeck} />
+        <DeckPane deck={this.getCardList(this.state.deck)}
+                  sideboard={this.getCardList(this.state.sideboard)}
+                  onRemove={this.removeFromDeck}
+          />
       </div>
     );
   }
