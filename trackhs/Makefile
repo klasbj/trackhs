@@ -2,7 +2,7 @@
 vpath %.jsx source
 vpath %.css source
 
-JSS := $(addprefix public/, react.js react-dom.js immutable.min.js system.js)
+JSS := $(addprefix public/, react.js react-dom.js immutable.js system.js)
 JS := public/deckbuilder.js
 CSS := public/deckbuilder.css
 
@@ -24,7 +24,7 @@ public/react.js: $(NODE_PATH)/react/dist/react.js | public
 public/react-dom.js: $(NODE_PATH)/react-dom/dist/react-dom.js | public
 	cp $< $@
 
-public/immutable.min.js: $(NODE_PATH)/immutable/dist/immutable.min.js | public
+public/immutable.js: $(NODE_PATH)/immutable/dist/immutable.js | public
 	cp $< $@
 
 public/system.js: $(NODE_PATH)/systemjs/dist/system.js | public

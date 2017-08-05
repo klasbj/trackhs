@@ -5,7 +5,6 @@ html
     meta(charset="utf-8")
     link(href="/static/deckbuilder.css", rel="stylesheet")
   body
-    h1 trackhs
     #deckbuilder
 
   script(src="/static/system.js")
@@ -19,7 +18,7 @@ html
       map : {
         "react" : "react.js",
         "react-dom" : "react-dom.js",
-        "immutable" : "immutable.min.js"
+        "immutable" : "immutable.js"
         }
     });
     System.import("/static/deckbuilder.js");
