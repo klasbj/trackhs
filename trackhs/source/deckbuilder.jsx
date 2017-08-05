@@ -33,6 +33,20 @@ const card_db = [
 ];
 */
 
+const Card = Immutable.Record({
+  id : "",
+  cost : 0,
+  name : "",
+  text : "",
+  attack : 0,
+  health : 0,
+  count : 0,
+  type : "",
+  rarity : "",
+  cardClass : "",
+  classes : []
+});
+
 function DeckCard(props) {
   
   const click = function(e) {
@@ -151,7 +165,7 @@ function SearchCard(props) {
 }
 
 function SearchResults(props) {
-  const cards = props.cards.map((c) =>
+  const cards = props.cards.sort((a,b) => a.cost == b.cost ? a.name.localeCompare(b.name) : a.cost - b.cost).toList().map((c) =>
     <SearchCard key={c.id} card={c} onClick={props.onClick} />
   );
   return (
@@ -166,7 +180,7 @@ function SearchResults(props) {
 class CardSelector extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { searchresult : card_db.filter((x) => x.type != "HERO") };
+    //this.state = { searchresult : card_db.filter((x) => x.type != "HERO") };
 
     this.search = this.search.bind(this);
     this.handleCardClick = this.handleCardClick.bind(this);
@@ -190,7 +204,7 @@ class CardSelector extends React.Component {
     return (
       <div className="cardselector">
         <SearchBar onChange={this.search} />
-        <SearchResults cards={this.state.searchresult} onClick={this.handleCardClick} />
+        <SearchResults cards={this.props.cards} onClick={this.handleCardClick} />
       </div>
       );
   }
@@ -200,7 +214,7 @@ class DeckBuilder extends React.Component {
   constructor(props) {
     super(props);
     let cards = new Map();
-    card_db.forEach((c) => cards.set(c.id, c));
+    card_db.filter(x => x.type !== "HERO").forEach((c) => cards.set(c.id, new Card(c)));
     this.state = { cards : new Immutable.Map(cards),
                    deck : new Immutable.Map(),
                    sideboard : new Immutable.Map() };
@@ -214,12 +228,12 @@ class DeckBuilder extends React.Component {
       let newDeck = null; //ew Map(prev.deck);
       if (!prev.deck.has(cardId)) {
         newDeck = prev.deck.set(cardId, 1);
-      } else if (prev.deck.get(cardId) < (prev.cards.get(cardId).rarity.toLowerCase() == 'legendary' ? 1 : 2)) {
-        newDeck = prev.deck.set(cardId, prev.deck.get(cardId) + 1);
+      } else if (prev.deck.get(cardId) < (prev.cards.get(cardId).rarity.toLowerCase() == "legendary" ? 1 : 2)) {
+        newDeck = prev.deck.update(cardId, v => v + 1);
       } else {
         return {};
       }
-      return {deck : newDeck};
+      return {deck : newDeck, cards : prev.cards.updateIn([cardId, "count"], v => newDeck.get(cardId))};
     });
   }
 
@@ -233,7 +247,7 @@ class DeckBuilder extends React.Component {
         } else {
           newDeck = prev.deck.delete(cardId);
         }
-        return {deck : newDeck};
+        return {deck : newDeck, cards : prev.cards.updateIn([cardId, "count"], v => newDeck.get(cardId))};
       }
       return {};
     });
@@ -241,14 +255,16 @@ class DeckBuilder extends React.Component {
 
   getCardList(cardIds) {
     let ans = [];
-    cardIds.forEach((c,k) => c > 0 ? ans.push(Object.assign({}, this.state.cards.get(k), {"count": c})) : null);
+    cardIds.forEach((c,k) => c > 0 ? ans.push(this.state.cards.get(k)
+      //Object.assign({}, this.state.cards.get(k).toObject(), {"count": c})
+    ) : null);
     ans.sort((a,b) => a.cost == b.cost ? a.name.localeCompare(b.name) : a.cost - b.cost);
     return ans;
   }
   render() {
     return (
       <div className="deckbuilder">
-        <CardSelector onAddToDeck={this.addToDeck} />
+        <CardSelector cards={this.state.cards} onAddToDeck={this.addToDeck} />
         <DeckPane deck={this.getCardList(this.state.deck)}
                   sideboard={this.getCardList(this.state.sideboard)}
                   onRemove={this.removeFromDeck}
