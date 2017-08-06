@@ -1,5 +1,5 @@
 
-import * as Immutable from "immutable";
+import Immutable from "immutable";
 import React from "react";
 import ReactDOM from "react-dom";
 
