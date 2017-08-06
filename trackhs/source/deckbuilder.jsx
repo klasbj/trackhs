@@ -44,8 +44,11 @@ const Card = Immutable.Record({
   type : "",
   rarity : "",
   cardClass : "",
-  classes : []
+  classes : new Immutable.Set(),
+  cardSet : "",
+  dbfIf : 0,
 });
+const cardDefaults = new Card(); // maybe there are some better way to do this?
 
 function DeckCard(props) {
   
@@ -108,7 +111,19 @@ class DeckPane extends React.Component {
 }
 
 function SearchBar(props) {
-  return <div className="searchbar">Search here...</div>;
+  function onChangeText(ev) {
+    const target = ev.target;
+    const value = target.value;
+    const name = target.name;
+
+    props.onChange(props.terms.update(name, _ => value));
+  }
+  return (
+    <div className="searchbar">
+    Search here...
+    <input name="terms" type="text" onChange={onChangeText} />
+    </div>
+  );
 }
 
 function MinionStatline(props) {
@@ -177,17 +192,53 @@ function SearchResults(props) {
   );
 }
 
+const SearchTerms = Immutable.Record({
+  minMana : 0,
+  maxMana : 25,
+  classes : new Immutable.Set(), // some enum for all?
+  rarities : new Immutable.Set(),
+  sets : new Immutable.Set(),
+  minAttack : 0,
+  maxAttack : 100,
+  minHealth : 0,
+  maxHealth : 100,
+  types : new Immutable.Set(),
+  terms : "",
+});
+
+
+
 class CardSelector extends React.Component {
   constructor(props) {
     super(props);
     //this.state = { searchresult : card_db.filter((x) => x.type != "HERO") };
 
+    this.state = {
+      terms : new SearchTerms(),
+    };
     this.search = this.search.bind(this);
     this.handleCardClick = this.handleCardClick.bind(this);
+    this.cardMatches = this.cardMatches.bind(this);
+  }
+
+  cardMatches(card, terms) {
+    if (card.cost < terms.minMana || card.cost > terms.maxMana) return false;
+    if (card.attck < terms.minAttack || card.attack > terms.maxAttack) return false;
+    if (card.health < terms.minHealth || card.health > terms.maxHealth) return false;
+    if (terms.classes.size > 0 && card.classes.union(terms.classes).size === 0) return false;
+    if (terms.rarity > 0 && !terms.rarities.has(card.rarity)) return false;
+    if (terms.sets > 0 && !terms.sets.has(card.set)) return false;
+    if (terms.types.size > 0 && !terms.types.has(card.type)) return false;
+    if (terms.terms.length > 0) {
+      let re = new RegExp(terms.terms, 'ig');
+      if (!(re.test(card.name) || re.test(card.text))) return false;
+    }
+
+    return true;
   }
 
   search(terms) {
-    console.log("search eventually");
+    this.setState({terms: terms});
   }
 
   handleCardClick(ev) {
@@ -203,8 +254,8 @@ class CardSelector extends React.Component {
   render() {
     return (
       <div className="cardselector">
-        <SearchBar onChange={this.search} />
-        <SearchResults cards={this.props.cards} onClick={this.handleCardClick} />
+        <SearchBar terms={this.state.terms} onChange={this.search} />
+        <SearchResults cards={this.props.cards.toSeq().filter((x) => this.cardMatches(x, this.state.terms))} onClick={this.handleCardClick} />
       </div>
       );
   }
