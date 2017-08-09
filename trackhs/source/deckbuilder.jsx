@@ -40,6 +40,7 @@ const Card = Immutable.Record({
   text : "",
   attack : 0,
   health : 0,
+  durability : 0,
   count : 0,
   type : "",
   rarity : "",
@@ -47,8 +48,15 @@ const Card = Immutable.Record({
   classes : new Immutable.Set(),
   cardSet : "",
   dbfIf : 0,
+  collectible : true,
 });
 const cardDefaults = new Card(); // maybe there are some better way to do this?
+
+function makeCard(card) {
+  let c = Object.assign({}, card, {cardSet : card.set});
+  if (c.type.toLowerCase() === "weapon") c.health = c.durability;
+  return new Card(c);
+}
 
 function DeckCard(props) {
   
@@ -110,20 +118,94 @@ class DeckPane extends React.Component {
   }
 }
 
-function SearchBar(props) {
-  function onChangeText(ev) {
+function MultiSelection(props) {
+  function selectors() {
+    const style = {
+      color : props.list.count() > 0 ? "black" : "lightgray"
+      };
+    return props.selections.map(
+      (s) => (<label style={style} key={s.key}>
+          <input type="checkbox"
+                 checked={props.list.has(s.key)}
+                 onChange={e => props.cbOnClick({item: s, checked: e.target.checked})} />
+          {s.displayName}
+        </label>)
+    );
+  }
+  return (
+    <div id={props.title + "_selection"} className="">
+      <a onClick={() => props.titleOnClick(props.title)} style={{color:props.titleActive?"black":"darkgray"}}>{props.title}</a>
+      {selectors()}
+    </div>
+  );
+}
+
+class SearchBar extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      expand : false,
+    }
+
+    this.onChangeText = this.onChangeText.bind(this);
+    this.onChangeSet = this.onChangeSet.bind(this);
+    this.OnChangeList = this.onChangeList.bind(this);
+  }
+  onChangeText(ev) {
     const target = ev.target;
     const value = target.value;
     const name = target.name;
 
-    props.onChange(props.terms.update(name, _ => value));
+    this.props.onChange(this.props.terms.update(name, _ => value));
   }
-  return (
+  onChangeSet(e) {
+    let terms = this.props.terms;
+    if (e.checked) {
+      if (!e.item.standard) {
+        terms = terms.update("standard", _ => false);
+      }
+      terms = terms.update("sets", s => s.add(e.item.key));
+    } else {
+      terms = terms.update("sets", s => s.delete(e.item.key));
+    }
+    this.props.onChange(terms);
+  }
+  onChangeList(l, e) {
+    let terms = this.props.terms;
+    if (e.checked) {
+      terms = terms.update(l, s => s.add(e.item.key));
+    } else {
+      terms = terms.update(l, s => s.delete(e.item.key));
+    }
+    this.props.onChange(terms);
+  }
+  render() {
+    return (
     <div className="searchbar">
     Search here...
-    <input name="terms" type="text" onChange={onChangeText} />
+      <div>
+    <input name="terms" type="text" onChange={this.onChangeText} />
+      </div>
+      <MultiSelection list={this.props.terms.sets}
+          title="Wild" titleActive={!this.props.terms.standard && this.props.terms.sets.count() === 0}
+          titleOnClick={() => this.props.onChange(this.props.terms.update("standard", _ => false).update("sets", _ => _.clear()))}
+          selections={sets.filter(x => !x.standard)} cbOnClick={this.onChangeSet} />
+      <MultiSelection list={this.props.terms.sets}
+          title="Standard" titleActive={this.props.terms.standard && this.props.terms.sets.count() === 0}
+          titleOnClick={() => this.props.onChange(this.props.terms.update("standard", _ => true).update("sets", _ => _.clear()))}
+          selections={sets.filter(x => x.standard)} cbOnClick={this.onChangeSet} />
+      <MultiSelection list={this.props.terms.rarities}
+          title="Rarity" titleActive={true}
+          titleOnClick={() => null}
+          selections={[{key:"FREE",displayName:"Basic"},{key:"COMMON",displayName:"Common"},{key:"RARE",displayName:"Rare"},{key:"EPIC",displayName:"Epic"},{key:"LEGENDARY",displayName:"Legendary"},]} cbOnClick={x => this.onChangeList("rarities", x)} />
+      <MultiSelection list={this.props.terms.types}
+          title="Card Type" titleActive={true}
+          titleOnClick={() => null}
+          selections={[{key:"HERO",displayName:"Hero Card"},{key:"WEAPON",displayName:"Weapon"},{key:"SPELL",displayName:"Spell"},{key:"MINION",displayName:"Minion"}]} cbOnClick={x => this.onChangeList("types", x)} />
     </div>
-  );
+    )
+  }
 }
 
 function MinionStatline(props) {
@@ -204,7 +286,27 @@ const SearchTerms = Immutable.Record({
   maxHealth : 100,
   types : new Immutable.Set(),
   terms : "",
+  standard : true,
 });
+
+const sets = [
+  { key : "CORE",       displayName : "Basic",      standard : true },
+  { key : "EXPERT1",    displayName : "Expert",     standard : true },
+  { key : "HOF",        displayName : "HallOfFame", standard : false },
+  { key : "NAXX",       displayName : "Naxx",       standard : false },
+  { key : "GVG",        displayName : "GvG",        standard : false },
+  { key : "BRM",        displayName : "BRM",        standard : false },
+  { key : "TGT",        displayName : "TGT",        standard : false },
+  { key : "LOE",        displayName : "LoE",        standard : false },
+  { key : "OG",         displayName : "OldGods",    standard : true },
+  { key : "KARA",       displayName : "Karazhan",   standard : true },
+  { key : "GANGS",      displayName : "MSG",        standard : true },
+  { key : "UNGORO",     displayName : "Ungoro",     standard : true },
+  { key : "ICECROWN",   displayName : "KFT",        standard : true },
+];
+
+
+const standardSets = new Immutable.Set(sets.filter(x => x.standard).map(x => x.key));
 
 
 
@@ -222,13 +324,15 @@ class CardSelector extends React.Component {
   }
 
   cardMatches(card, terms) {
+    if (!card.collectible) return false;
     if (card.cost < terms.minMana || card.cost > terms.maxMana) return false;
     if (card.attck < terms.minAttack || card.attack > terms.maxAttack) return false;
     if (card.health < terms.minHealth || card.health > terms.maxHealth) return false;
-    if (terms.classes.size > 0 && card.classes.union(terms.classes).size === 0) return false;
-    if (terms.rarity > 0 && !terms.rarities.has(card.rarity)) return false;
-    if (terms.sets > 0 && !terms.sets.has(card.set)) return false;
-    if (terms.types.size > 0 && !terms.types.has(card.type)) return false;
+    if (terms.classes.count() > 0 && card.classes.union(terms.classes).count() === 0) return false;
+    if (terms.rarities.count() > 0 && !terms.rarities.has(card.rarity)) return false;
+    if (terms.sets.count() > 0 && !terms.sets.has(card.cardSet)) return false;
+    if (terms.standard && !standardSets.has(card.cardSet)) return false;
+    if (terms.types.count() > 0 && !terms.types.has(card.type)) return false;
     if (terms.terms.length > 0) {
       let re = new RegExp(terms.terms, 'ig');
       if (!(re.test(card.name) || re.test(card.text))) return false;
@@ -265,7 +369,8 @@ class DeckBuilder extends React.Component {
   constructor(props) {
     super(props);
     let cards = new Map();
-    card_db.filter(x => x.type !== "HERO").forEach((c) => cards.set(c.id, new Card(c)));
+    //card_db.filter(x => x.type !== "HERO" || !(x.set === "CORE" || x.set === "HERO SKINS")).forEach((c) => cards.set(c.id, new Card(c)));
+    card_db.filter(x => x.type !== "HERO" || !(x.set === "CORE" || x.set === "HERO SKINS")).forEach((c) => cards.set(c.id, makeCard(c)));
     this.state = { cards : new Immutable.Map(cards),
                    deck : new Immutable.Map(),
                    sideboard : new Immutable.Map() };
