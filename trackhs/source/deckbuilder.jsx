@@ -55,6 +55,11 @@ const cardDefaults = new Card(); // maybe there are some better way to do this?
 function makeCard(card) {
   let c = Object.assign({}, card, {cardSet : card.set});
   if (c.type.toLowerCase() === "weapon") c.health = c.durability;
+  let cls = [card.cardClass];
+  if (card.classes) {
+    cls = card.classes;
+  }
+  c.classes = new Immutable.Set(cls);
   return new Card(c);
 }
 
@@ -203,6 +208,10 @@ class SearchBar extends React.Component {
           title="Card Type" titleActive={true}
           titleOnClick={() => null}
           selections={[{key:"HERO",displayName:"Hero Card"},{key:"WEAPON",displayName:"Weapon"},{key:"SPELL",displayName:"Spell"},{key:"MINION",displayName:"Minion"}]} cbOnClick={x => this.onChangeList("types", x)} />
+      <MultiSelection list={this.props.terms.classes}
+          title="Classes" titleActive={true}
+          titleOnClick={() => null}
+          selections={["Neutral","Mage","Warlock","Priest","Warrior","Paladin","Druid","Shaman","Rogue","Hunter"].map(x => Object({key: x.toUpperCase(), displayName: x}))} cbOnClick={x => this.onChangeList("classes", x)} />
     </div>
     )
   }
@@ -328,7 +337,7 @@ class CardSelector extends React.Component {
     if (card.cost < terms.minMana || card.cost > terms.maxMana) return false;
     if (card.attck < terms.minAttack || card.attack > terms.maxAttack) return false;
     if (card.health < terms.minHealth || card.health > terms.maxHealth) return false;
-    if (terms.classes.count() > 0 && card.classes.union(terms.classes).count() === 0) return false;
+    if (terms.classes.count() > 0 && card.classes.intersect(terms.classes).count() === 0) return false;
     if (terms.rarities.count() > 0 && !terms.rarities.has(card.rarity)) return false;
     if (terms.sets.count() > 0 && !terms.sets.has(card.cardSet)) return false;
     if (terms.standard && !standardSets.has(card.cardSet)) return false;
