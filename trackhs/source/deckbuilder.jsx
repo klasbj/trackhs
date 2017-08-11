@@ -35,7 +35,7 @@ const card_db = [
 */
 
 const Card = Immutable.Record({
-  id : "",
+  id : 0,
   cost : 0,
   name : "",
   text : "",
@@ -48,13 +48,14 @@ const Card = Immutable.Record({
   cardClass : "",
   classes : new Immutable.Set(),
   cardSet : "",
-  dbfIf : 0,
+  dbfId : 0,
   collectible : true,
 });
 const cardDefaults = new Card(); // maybe there are some better way to do this?
 
 function makeCard(card) {
   let c = Object.assign({}, card, {cardSet : card.set});
+  c.id = c.dbfId; // only use the exchange string ID
   if (c.type.toLowerCase() === "weapon") c.health = c.durability;
   let cls = [card.cardClass];
   if (card.classes) {
@@ -99,11 +100,89 @@ function DeckList(props) {
   );
 }
 
+class Popup extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.renderContent = this.renderContent.bind(this);
+  }
+
+  renderContent() {
+  }
+
+  render() {
+    return (
+      <div className="popup" style={{display:this.props.show?"block":"none"}}>
+        {this.renderContent()}
+      </div>
+    );
+  }
+}
+
+class ImportPopup extends Popup {
+  constructor(props) {
+    super(props);
+    this.state = {
+      value: ""
+    }
+    this.submit = this.submit.bind(this);
+  }
+
+  submit(deck) {
+    this.setState({value:""});
+    this.props.onSubmit(deck);
+  }
+
+  renderContent() {
+    return (
+      <div>
+        <input type="text" value={this.state.value} onChange={e => this.setState({value : e.target.value})} />
+        <button onClick={_ => this.submit(this.state.value)}>Import</button>
+        <button onClick={_ => this.submit(null)}>Cancel</button>
+      </div>
+    );
+  }
+}
+
+class ExportPopup extends Popup {
+  constructor(props) {
+    super(props);
+
+    this.select = this.select.bind(this);
+    this.copy = this.copy.bind(this);
+  }
+
+  select() {
+    this.textOutput.select();
+  }
+
+  copy() {
+    this.select();
+    document.execCommand("copy");
+  }
+
+  renderContent() {
+    return (
+      <div>
+        <input type="text" value={this.props.value} ref={c => {this.textOutput = c}} readOnly />
+        <button onClick={this.copy}>Copy</button>
+        <button onClick={_ => this.props.onAccept(null)}>Close</button>
+      </div>
+    );
+  }
+}
+
 class DeckPane extends React.Component {
   constructor(props) {
     super(props);
 
+    this.state = {
+      importOpen : false,
+      exportOpen : false,
+    }
     this.handleCardClick = this.handleCardClick.bind(this);
+    this.importDeck = this.importDeck.bind(this);
+    this.exportString = this.exportString.bind(this);
   }
 
   handleCardClick(ev) {
@@ -115,9 +194,32 @@ class DeckPane extends React.Component {
         break;
     }
   }
+
+  importDeck(deck) {
+    this.setState({importOpen:false});
+    if (deck) {
+      this.props.onImport(deck);
+    }
+  }
+
+  exportString() {
+    const deck = {
+      isStandard : true, // for now...
+      heroes : this.props.hero ? [this.props.hero.id] : [],
+      cards : this.props.deck.map(c => [c.id, c.count])
+    }
+
+    return DeckCode.encode(deck);
+  }
+
+
   render() {
     return (
       <div className="deckpane">
+        <button onClick={_ => this.setState({importOpen:true})}>Import</button>
+        <button onClick={_ => this.setState({exportOpen:true})}>Export</button>
+        <ImportPopup show={this.state.importOpen} onSubmit={this.importDeck} />
+        <ExportPopup show={this.state.exportOpen} value={this.exportString()} onAccept={_ => this.setState({exportOpen:false})} />
         <DeckList deck={this.props.deck} onClick={this.handleCardClick} />
       </div>
     );
@@ -380,26 +482,62 @@ class DeckBuilder extends React.Component {
     super(props);
     let cards = new Map();
     //card_db.filter(x => x.type !== "HERO" || !(x.set === "CORE" || x.set === "HERO SKINS")).forEach((c) => cards.set(c.id, new Card(c)));
-    card_db.filter(x => x.type !== "HERO" || !(x.set === "CORE" || x.set === "HERO SKINS")).forEach((c) => cards.set(c.id, makeCard(c)));
+    card_db.filter(x => x.type !== "HERO" || !(x.set === "CORE" || x.set === "HERO_SKINS")).forEach((c) => cards.set(c.dbfId, makeCard(c)));
+    let heroes = new Immutable.Map();
+    heroes = heroes.withMutations(m => {
+      card_db.filter(x => x.type === "HERO" && (x.set === "CORE" || x.set === "HERO_SKINS")).forEach(c => m.set(c.dbfId, makeCard(c)))
+    });
     this.state = { cards : new Immutable.Map(cards),
+                   heroes : heroes,
+                   hero : null,
                    deck : new Immutable.Map(),
                    sideboard : new Immutable.Map() };
 
     this.addToDeck = this.addToDeck.bind(this);
     this.removeFromDeck = this.removeFromDeck.bind(this);
+    this.importDeck = this.importDeck.bind(this);
+  }
+
+  importDeck(deckString) {
+    const deck = DeckCode.decode(deckString);
+    const newDeck = new Immutable.Map(deck.cards);
+    this.setState(function(prev,props) {
+      let newCards = prev.cards.withMutations(m => {
+        prev.deck.forEach((v,k) => m.setIn([k,"count"], 0));
+        newDeck.forEach((v,k) => m.setIn([k,"count"], v));
+      });
+      return {hero: deck.heroes[0], deck: newDeck, sideboard : prev.sideboard.clear(), cards: newCards };
+    });
   }
 
   addToDeck(cardId) {
     this.setState(function (prev,props) {
-      let newDeck = null; //ew Map(prev.deck);
+      let newDeck = null;
+      const card = prev.cards.get(cardId);
+      let heroId = prev.hero;
+      if (heroId) {
+        const hero = prev.heroes.get(prev.hero);
+        if (hero.classes.union(["NEUTRAL"]).intersect(card.classes).count() === 0) {
+          return {};
+        }
+      } else if (card.cardClass !== "NEUTRAL") {
+        // find a hero, prioritize CORE heroes
+        let hero = prev.heroes.find(x => x.set === "CORE" && x.cardClass === card.cardClass);
+        if (!heroId) {
+          hero = prev.heroes.find(x => x.cardClass === card.cardClass);
+        }
+        if (hero) {
+          heroId = hero.id;
+        }
+      }
       if (!prev.deck.has(cardId)) {
         newDeck = prev.deck.set(cardId, 1);
-      } else if (prev.deck.get(cardId) < (prev.cards.get(cardId).rarity.toLowerCase() == "legendary" ? 1 : 2)) {
+      } else if (prev.deck.get(cardId) < (card.rarity.toLowerCase() == "legendary" ? 1 : 2)) {
         newDeck = prev.deck.update(cardId, v => v + 1);
       } else {
         return {};
       }
-      return {deck : newDeck, cards : prev.cards.updateIn([cardId, "count"], v => newDeck.get(cardId))};
+      return {deck : newDeck, cards : prev.cards.updateIn([cardId, "count"], v => newDeck.get(cardId)), hero: heroId};
     });
   }
 
@@ -413,7 +551,9 @@ class DeckBuilder extends React.Component {
         } else {
           newDeck = prev.deck.delete(cardId);
         }
-        return {deck : newDeck, cards : prev.cards.updateIn([cardId, "count"], v => newDeck.get(cardId))};
+        return {deck : newDeck,
+                cards : prev.cards.updateIn([cardId, "count"], v => newDeck.get(cardId)),
+                hero : newDeck.count() > 0 ? prev.hero : null};
       }
       return {};
     });
@@ -433,7 +573,9 @@ class DeckBuilder extends React.Component {
         <CardSelector cards={this.state.cards} onAddToDeck={this.addToDeck} />
         <DeckPane deck={this.getCardList(this.state.deck)}
                   sideboard={this.getCardList(this.state.sideboard)}
+                  hero={this.state.heroes.get(this.state.hero)}
                   onRemove={this.removeFromDeck}
+                  onImport={this.importDeck}
           />
       </div>
     );
