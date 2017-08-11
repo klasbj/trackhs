@@ -3,7 +3,7 @@ vpath %.jsx source
 vpath %.css source
 
 JSS := $(addprefix public/, react.js react-dom.js immutable.js system.js)
-JS := public/deckbuilder.js
+JS := public/deckbuilder.js public/deckcode.js
 CSS := public/deckbuilder.css
 
 .PHONY: all
