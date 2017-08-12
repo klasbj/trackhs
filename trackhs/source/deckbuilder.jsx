@@ -105,15 +105,24 @@ class Popup extends React.Component {
     super(props);
 
     this.renderContent = this.renderContent.bind(this);
+    this.close = this.close.bind(this);
   }
 
   renderContent() {
   }
 
+  close() {
+    if (this.props.onClose) {
+      this.props.onClose();
+    }
+  }
+
   render() {
     return (
-      <div className="popup" style={{display:this.props.show?"block":"none"}}>
-        {this.renderContent()}
+      <div className="popup" onClick={this.close}>
+        <div className="popup-content" onClick={e => e.stopPropagation()}>
+          {this.renderContent()}
+        </div>
       </div>
     );
   }
@@ -131,6 +140,7 @@ class ImportPopup extends Popup {
   submit(deck) {
     this.setState({value:""});
     this.props.onSubmit(deck);
+    this.close();
   }
 
   renderContent() {
@@ -166,7 +176,7 @@ class ExportPopup extends Popup {
       <div>
         <input type="text" value={this.props.value} ref={c => {this.textOutput = c}} readOnly />
         <button onClick={this.copy}>Copy</button>
-        <button onClick={_ => this.props.onAccept(null)}>Close</button>
+        <button onClick={_ => this.close()}>Close</button>
       </div>
     );
   }
@@ -214,12 +224,14 @@ class DeckPane extends React.Component {
 
 
   render() {
-    return (
-      <div className="deckpane">
-        <button onClick={_ => this.setState({importOpen:true})}>Import</button>
+/*        <button onClick={_ => this.setState({importOpen:true})}>Import</button>
         <button onClick={_ => this.setState({exportOpen:true})}>Export</button>
         <ImportPopup show={this.state.importOpen} onSubmit={this.importDeck} />
-        <ExportPopup show={this.state.exportOpen} value={this.exportString()} onAccept={_ => this.setState({exportOpen:false})} />
+        <ExportPopup show={this.state.exportOpen} value={this.exportString()} onAccept={_ => this.setState({exportOpen:false})} />*/
+    return (
+      <div className="deckpane">
+        <button onClick={_ => this.props.onPopup(<ImportPopup show={true} onSubmit={this.importDeck} />)}>Import</button>
+        <button onClick={_ => this.props.onPopup(<ExportPopup show={true} value={this.exportString()} />)}>Export</button>
         <DeckList deck={this.props.deck} onClick={this.handleCardClick} />
       </div>
     );
@@ -491,11 +503,15 @@ class DeckBuilder extends React.Component {
                    heroes : heroes,
                    hero : null,
                    deck : new Immutable.Map(),
-                   sideboard : new Immutable.Map() };
+                   sideboard : new Immutable.Map(),
+                   popup : null
+    };
 
     this.addToDeck = this.addToDeck.bind(this);
     this.removeFromDeck = this.removeFromDeck.bind(this);
     this.importDeck = this.importDeck.bind(this);
+    this.setPopup = this.setPopup.bind(this);
+    this.getPopup = this.getPopup.bind(this);
   }
 
   importDeck(deckString) {
@@ -567,16 +583,33 @@ class DeckBuilder extends React.Component {
     ans.sort((a,b) => a.cost == b.cost ? a.name.localeCompare(b.name) : a.cost - b.cost);
     return ans;
   }
+
+  setPopup(popup) {
+    this.setState({popup : React.cloneElement(popup, { onClose: () => this.setState({popupOpen:false,popup:null}) }) });
+  }
+
+  getPopup() {
+    return this.state.popup;
+  }
+
   render() {
+    let style = {};
+    if (this.state.popup) {
+      style = {filter: "blur(5px) grayscale(50%)"}
+    }
     return (
-      <div className="deckbuilder">
+      <div name="main">
+      <div className="deckbuilder" style={style}>
         <CardSelector cards={this.state.cards} onAddToDeck={this.addToDeck} />
         <DeckPane deck={this.getCardList(this.state.deck)}
                   sideboard={this.getCardList(this.state.sideboard)}
                   hero={this.state.heroes.get(this.state.hero)}
                   onRemove={this.removeFromDeck}
                   onImport={this.importDeck}
+                  onPopup={this.setPopup}
           />
+      </div>
+      {this.getPopup()}
       </div>
     );
   }
