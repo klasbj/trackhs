@@ -187,12 +187,11 @@ class DeckPane extends React.Component {
     super(props);
 
     this.state = {
-      importOpen : false,
-      exportOpen : false,
     }
     this.handleCardClick = this.handleCardClick.bind(this);
-    this.importDeck = this.importDeck.bind(this);
     this.exportString = this.exportString.bind(this);
+    this.validateDeck = this.validateDeck.bind(this);
+    this.countCards = this.countCards.bind(this);
   }
 
   handleCardClick(ev) {
@@ -202,13 +201,6 @@ class DeckPane extends React.Component {
         break;
       default:
         break;
-    }
-  }
-
-  importDeck(deck) {
-    this.setState({importOpen:false});
-    if (deck) {
-      this.props.onImport(deck);
     }
   }
 
@@ -222,6 +214,24 @@ class DeckPane extends React.Component {
     return DeckCode.encode(deck);
   }
 
+  validateDeck() {
+    if (!this.props.hero) return false;
+    let numCards = 0;
+    const heroclasses = Immutable.Set([this.props.hero.cardClass, "NEUTRAL"]);
+    for (let c of this.props.deck) {
+      numCards += c.count;
+      if (c.classes.intersect(heroclasses).count() === 0) return false;
+    }
+    return numCards === 30;
+  }
+
+  countCards() {
+    if (this.props.deck) {
+      return this.props.deck.reduce((s,c) => s + c.count, 0);
+    } else {
+      return 0;
+    }
+  }
 
   render() {
 /*        <button onClick={_ => this.setState({importOpen:true})}>Import</button>
@@ -230,8 +240,12 @@ class DeckPane extends React.Component {
         <ExportPopup show={this.state.exportOpen} value={this.exportString()} onAccept={_ => this.setState({exportOpen:false})} />*/
     return (
       <div className="deckpane">
-        <button onClick={_ => this.props.onPopup(<ImportPopup show={true} onSubmit={this.importDeck} />)}>Import</button>
-        <button onClick={_ => this.props.onPopup(<ExportPopup show={true} value={this.exportString()} />)}>Export</button>
+        <button onClick={null}>New</button>
+        <button onClick={_ => this.props.onPopup(<ImportPopup show={true} onSubmit={this.props.onImport} />)}>Import</button>
+        <button disabled={!this.validateDeck()} onClick={_ => this.props.onPopup(<ExportPopup show={true} value={this.exportString()} />)}>Export</button>
+        <div>
+          <p>{this.countCards()} / 30</p>
+        </div>
         <DeckList deck={this.props.deck} onClick={this.handleCardClick} />
       </div>
     );
@@ -305,7 +319,7 @@ class SearchBar extends React.Component {
     <div className="searchbar">
     Search here...
       <div>
-    <input name="terms" type="text" onChange={this.onChangeText} />
+    <input name="terms" type="text" value={this.props.terms.terms} onChange={this.onChangeText} />
       </div>
       <MultiSelection list={this.props.terms.sets}
           title="Wild" titleActive={!this.props.terms.standard && this.props.terms.sets.count() === 0}
@@ -515,6 +529,7 @@ class DeckBuilder extends React.Component {
   }
 
   importDeck(deckString) {
+    if (!deckString) return;
     const deck = DeckCode.decode(deckString);
     const newDeck = new Immutable.Map(deck.cards);
     this.setState(function(prev,props) {
